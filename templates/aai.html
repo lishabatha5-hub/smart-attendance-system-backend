@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AAI Calculator</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+
+<div class="sidebar">
+    <h2>EduTrack</h2>
+    <a href="/dashboard">Dashboard</a>
+    <a href="/students">Students</a>
+    <a href="/attendance">Attendance</a>
+    <a href="/marks">Internal Marks</a>
+    <a href="/aai">AAI Calculator</a>
+</div>
+
+<div class="main">
+
+    <h1>AAI Calculator</h1>
+    <p class="subtitle">Academic Attendance Index Calculation</p>
+
+    <div class="panel">
+
+        <form action="/save_aai" method="POST">
+
+            <input type="text" name="rollno" placeholder="Roll Number" required>
+            <input type="number" step="0.01" name="attendance" placeholder="Attendance %" required>
+            <input type="number" step="0.01" name="internal" placeholder="Internal %" required>
+
+            <button type="submit">Save AAI</button>
+
+        </form>
+
+        <br>
+
+        <table>
+            <tr>
+                <th>Roll No</th>
+                <th>Attendance %</th>
+                <th>Internal %</th>
+                <th>AAI Score</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+
+            {% for record in aai_records %}
+            <tr>
+                <td>{{ record[1] }}</td>
+                <td>{{ "%.2f"|format(record[2]) }}%</td>
+                <td>{{ "%.2f"|format(record[3]) }}%</td>
+                <td>{{ "%.2f"|format(record[4]) }}</td>
+                <td>{{ record[5] }}</td>
+                <td>
+                    <a href="/delete_aai/{{ record[0] }}"
+                       onclick="return confirm('Delete this AAI record?')">
+                       Delete
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+
+    </div>
+
+</div>
+
+</body>
+</html>

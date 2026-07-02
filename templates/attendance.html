@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Attendance</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<div class="sidebar">
+    <h2>EduTrack</h2>
+    <a href="/dashboard">Dashboard</a>
+    <a href="/students">Students</a>
+    <a href="/attendance">Attendance</a>
+    <a href="/marks">Internal Marks</a>
+    <a href="/aai">AAI Calculator</a>
+</div>
+
+<div class="main">
+    <h1>Attendance Entry</h1>
+    <p class="subtitle">Enter class attendance details</p>
+
+    <div class="panel">
+        <form action="/save_attendance" method="POST" style="margin-bottom: 25px;">
+            <input type="text" name="rollno" placeholder="Roll Number" required>
+            <input type="number" name="total_classes" placeholder="Total Classes" required>
+            <input type="number" name="classes_attended" placeholder="Classes Attended" required>
+
+            <button type="button" onclick="calculateAttendance()">Calculate Attendance</button>
+            <button type="submit">Save Attendance</button>
+        </form>
+
+        <div class="result-box">
+            Attendance Percentage: <span id="attendanceResult">0%</span>
+        </div>
+
+        <h2>Saved Attendance Records</h2>
+
+        <table>
+            <tr>
+                <th>Roll No</th>
+                <th>Total Classes</th>
+                <th>Classes Attended</th>
+                <th>Percentage</th>
+                <th>Actions</th>
+            </tr>
+
+            {% for record in attendance_records %}
+            <tr>
+                <td>{{ record[1] }}</td>
+                <td>{{ record[2] }}</td>
+                <td>{{ record[3] }}</td>
+                <td>{{ "%.2f"|format(record[4]) }}%</td>
+                <td>
+                    <a href="/delete_attendance/{{ record[0] }}"
+                       onclick="return confirm('Delete this attendance record?')">
+                       Delete
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+</div>
+
+<script>
+function calculateAttendance() {
+    let total = document.querySelector('input[name="total_classes"]').value;
+    let attended = document.querySelector('input[name="classes_attended"]').value;
+
+    if (total > 0 && attended >= 0) {
+        let percentage = (attended / total) * 100;
+        document.getElementById("attendanceResult").innerText = percentage.toFixed(2) + "%";
+    } else {
+        document.getElementById("attendanceResult").innerText = "0%";
+    }
+}
+</script>
+
+</body>
+</html>

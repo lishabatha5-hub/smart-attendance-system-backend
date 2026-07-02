@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Internal Marks</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+
+<div class="sidebar">
+    <h2>EduTrack</h2>
+    <a href="/dashboard">Dashboard</a>
+    <a href="/students">Students</a>
+    <a href="/attendance">Attendance</a>
+    <a href="/marks">Internal Marks</a>
+    <a href="/aai">AAI Calculator</a>
+</div>
+
+<div class="main">
+
+    <h1>Internal Marks</h1>
+    <p class="subtitle">Manage student internal marks</p>
+
+    <div class="panel">
+
+        <form action="/save_marks" method="POST">
+
+            <input type="text"
+                   name="rollno"
+                   placeholder="Roll Number"
+                   required>
+
+            <input type="number"
+                   name="mid1"
+                   placeholder="Mid 1 Marks"
+                   required>
+
+            <input type="number"
+                   name="mid2"
+                   placeholder="Mid 2 Marks"
+                   required>
+
+            <button type="submit">
+                Save Marks
+            </button>
+
+        </form>
+
+        <br>
+
+        <table>
+
+            <tr>
+                <th>Roll No</th>
+                <th>Mid 1</th>
+                <th>Mid 2</th>
+                <th>Average</th>
+                <th>Internal %</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+
+            {% for record in marks_records %}
+
+            <tr>
+
+                <td>{{ record[1] }}</td>
+                <td>{{ record[2] }}</td>
+                <td>{{ record[3] }}</td>
+                <td>{{ record[4] }}</td>
+                <td>{{ "%.1f"|format(record[5]) }}%</td>
+                <td>{{ record[6] }}</td>
+
+                <td>
+
+                    <a href="/delete_marks/{{ record[0] }}"
+                       onclick="return confirm('Delete this record?')">
+                       Delete
+                    </a>
+
+                </td>
+
+            </tr>
+
+            {% endfor %}
+
+        </table>
+
+    </div>
+
+</div>
+
+</body>
+</html>

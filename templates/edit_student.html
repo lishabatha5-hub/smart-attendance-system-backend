@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Edit Student</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<div class="main">
+    <h1>Edit Student</h1>
+
+    <form method="POST">
+        <input type="text"
+               name="rollno"
+               value="{{ student[0] }}"
+               readonly>
+
+        <input type="text"
+               name="name"
+               value="{{ student[1] }}"
+               required>
+
+        <input type="text"
+               name="branch"
+               value="{{ student[2] }}"
+               required>
+
+        <button type="submit">
+            Update Student
+        </button>
+    </form>
+</div>
+
+</
