@@ -1,70 +1,312 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>AAI Calculator</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='style.css') }}"
+    >
 </head>
 
 <body>
 
 <div class="sidebar">
     <h2>EduTrack</h2>
-    <a href="/dashboard">Dashboard</a>
-    <a href="/students">Students</a>
-    <a href="/attendance">Attendance</a>
-    <a href="/marks">Internal Marks</a>
-    <a href="/aai">AAI Calculator</a>
+
+    <a href="/dashboard">🏠 Dashboard</a>
+    <a href="/students">👨‍🎓 Students</a>
+    <a href="/attendance">📅 Attendance</a>
+    <a href="/marks">📖 Internal Marks</a>
+    <a href="/aai">📊 AAI Calculator</a>
 </div>
 
 <div class="main">
 
-    <h1>AAI Calculator</h1>
-    <p class="subtitle">Academic Attendance Index Calculation</p>
+    <h1>Academic Attendance Index</h1>
+
+    <p class="subtitle">
+        Search by Roll Number and calculate academic status automatically
+    </p>
 
     <div class="panel">
 
-        <form action="/save_aai" method="POST">
+        <h2>Student Academic Profile</h2>
 
-            <input type="text" name="rollno" placeholder="Roll Number" required>
-            <input type="number" step="0.01" name="attendance" placeholder="Attendance %" required>
-            <input type="number" step="0.01" name="internal" placeholder="Internal %" required>
+        <div class="lookup-row">
 
-            <button type="submit">Save AAI</button>
+            <input
+                type="text"
+                id="rollno"
+                placeholder="Enter Roll Number"
+                required
+            >
 
-        </form>
+            <button
+                type="button"
+                onclick="fetchStudentProfile()"
+            >
+                Search Student
+            </button>
 
-        <br>
+        </div>
 
-        <table>
-            <tr>
-                <th>Roll No</th>
-                <th>Attendance %</th>
-                <th>Internal %</th>
-                <th>AAI Score</th>
-                <th>Status</th>
-                <th>Actions</th>
-            </tr>
+        <p id="profileMessage"></p>
 
-            {% for record in aai_records %}
-            <tr>
-                <td>{{ record[1] }}</td>
-                <td>{{ "%.2f"|format(record[2]) }}%</td>
-                <td>{{ "%.2f"|format(record[3]) }}%</td>
-                <td>{{ "%.2f"|format(record[4]) }}</td>
-                <td>{{ record[5] }}</td>
-                <td>
-                    <a href="/delete_aai/{{ record[0] }}"
-                       onclick="return confirm('Delete this AAI record?')">
-                       Delete
-                    </a>
-                </td>
-            </tr>
-            {% endfor %}
-        </table>
+        <div id="studentProfile" style="display: none;">
+
+            <div class="profile-grid">
+
+                <div class="profile-item">
+                    <span>Student Name</span>
+                    <strong id="studentName">-</strong>
+                </div>
+
+                <div class="profile-item">
+                    <span>Branch</span>
+                    <strong id="studentBranch">-</strong>
+                </div>
+
+                <div class="profile-item">
+                    <span>Attendance</span>
+                    <strong>
+                        <span id="attendanceValue">0</span>%
+                    </strong>
+                </div>
+
+                <div class="profile-item">
+                    <span>Mid-1 Marks</span>
+                    <strong id="mid1Value">0</strong>
+                </div>
+
+                <div class="profile-item">
+                    <span>Mid-2 Marks</span>
+                    <strong id="mid2Value">0</strong>
+                </div>
+
+                <div class="profile-item">
+                    <span>Average Marks</span>
+                    <strong id="averageValue">0</strong>
+                </div>
+
+                <div class="profile-item">
+                    <span>Internal Percentage</span>
+                    <strong>
+                        <span id="internalValue">0</span>%
+                    </strong>
+                </div>
+
+                <div class="profile-item highlight-item">
+                    <span>AAI Score</span>
+                    <strong id="aaiValue">0</strong>
+                </div>
+
+                <div class="profile-item highlight-item">
+                    <span>Academic Status</span>
+                    <strong id="statusValue">-</strong>
+                </div>
+
+            </div>
+
+            <form action="/save_aai" method="POST">
+
+                <input
+                    type="hidden"
+                    id="saveRollno"
+                    name="rollno"
+                >
+
+                <input
+                    type="hidden"
+                    id="saveAttendance"
+                    name="attendance"
+                >
+
+                <input
+                    type="hidden"
+                    id="saveInternal"
+                    name="internal"
+                >
+
+                <button type="submit">
+                    Save AAI Record
+                </button>
+
+            </form>
+
+        </div>
+
+    </div>
+
+    <div class="panel" style="margin-top: 25px;">
+
+        <h2>Saved AAI Records</h2>
+
+        <div class="table-wrapper">
+
+            <table>
+
+                <thead>
+                    <tr>
+                        <th>Roll No</th>
+                        <th>Attendance %</th>
+                        <th>Internal %</th>
+                        <th>AAI Score</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+
+                    {% for record in aai_records %}
+
+                    <tr>
+                        <td>{{ record[1] }}</td>
+                        <td>{{ "%.2f"|format(record[2]) }}%</td>
+                        <td>{{ "%.2f"|format(record[3]) }}%</td>
+                        <td>{{ "%.2f"|format(record[4]) }}</td>
+                        <td>{{ record[5] }}</td>
+
+                        <td>
+                            <a
+                                class="action-link delete-link"
+                                href="/delete_aai/{{ record[0] }}"
+                                onclick="return confirm('Delete this AAI record?')"
+                            >
+                                Delete
+                            </a>
+                        </td>
+                    </tr>
+
+                    {% else %}
+
+                    <tr>
+                        <td colspan="6" class="empty-message">
+                            No AAI records available
+                        </td>
+                    </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
 
     </div>
 
 </div>
+
+<script>
+async function fetchStudentProfile() {
+    const rollno = document
+        .getElementById("rollno")
+        .value
+        .trim();
+
+    const message =
+        document.getElementById("profileMessage");
+
+    const profile =
+        document.getElementById("studentProfile");
+
+    if (!rollno) {
+        message.textContent = "Please enter a Roll Number";
+        profile.style.display = "none";
+        return;
+    }
+
+    try {
+        const response = await fetch(
+            `/get_student_data/${rollno}`
+        );
+
+        const data = await response.json();
+
+        if (!data.success) {
+            message.textContent = data.message;
+            profile.style.display = "none";
+            return;
+        }
+
+        const attendance =
+            parseFloat(data.attendance) || 0;
+
+        const internal =
+            parseFloat(data.internal_percentage) || 0;
+
+        const calculatedAAI =
+            (attendance * 0.65) +
+            (internal * 0.35);
+
+        let status;
+
+        if (calculatedAAI >= 85) {
+            status = "Excellent";
+        } else if (calculatedAAI >= 70) {
+            status = "Good";
+        } else if (calculatedAAI >= 50) {
+            status = "Average";
+        } else {
+            status = "At Risk";
+        }
+
+        document.getElementById("studentName").textContent =
+            data.name;
+
+        document.getElementById("studentBranch").textContent =
+            data.branch;
+
+        document.getElementById("attendanceValue").textContent =
+            attendance.toFixed(2);
+
+        document.getElementById("mid1Value").textContent =
+            data.mid1;
+
+        document.getElementById("mid2Value").textContent =
+            data.mid2;
+
+        document.getElementById("averageValue").textContent =
+            Number(data.average).toFixed(2);
+
+        document.getElementById("internalValue").textContent =
+            internal.toFixed(2);
+
+        document.getElementById("aaiValue").textContent =
+            calculatedAAI.toFixed(2);
+
+        document.getElementById("statusValue").textContent =
+            status;
+
+        document.getElementById("saveRollno").value =
+            rollno;
+
+        document.getElementById("saveAttendance").value =
+            attendance;
+
+        document.getElementById("saveInternal").value =
+            internal;
+
+        message.textContent =
+            "Student profile loaded successfully";
+
+        profile.style.display = "block";
+
+    } catch (error) {
+        message.textContent =
+            "Unable to load student profile";
+
+        profile.style.display = "none";
+
+        console.error(error);
+    }
+}
+</script>
 
 </body>
 </html>

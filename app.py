@@ -5,21 +5,38 @@ from flask import Flask, jsonify, redirect, render_template, request
 
 app = Flask(__name__)
 
-# Add DATABASE_URL in Render Environment Variables.
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
+
+# ---------------------------------------------------------
+# DATABASE CONNECTION
+# ---------------------------------------------------------
 
 def get_connection():
     if not DATABASE_URL:
         raise RuntimeError(
             "DATABASE_URL is not configured. "
-            "Add it in Render Environment Variables."
+            "Set it in Render Environment Variables or local terminal."
         )
 
     return psycopg2.connect(DATABASE_URL)
 
 
-def calculate_aai_status(aai_score):
+# ---------------------------------------------------------
+# STATUS FUNCTIONS
+# ---------------------------------------------------------
+
+def get_internal_status(internal_percentage):
+    if internal_percentage >= 85:
+        return "Excellent"
+    if internal_percentage >= 70:
+        return "Good"
+    if internal_percentage >= 50:
+        return "Average"
+    return "At Risk"
+
+
+def get_aai_status(aai_score):
     if aai_score >= 85:
         return "Excellent"
     if aai_score >= 70:
@@ -29,229 +46,372 @@ def calculate_aai_status(aai_score):
     return "At Risk"
 
 
+# ---------------------------------------------------------
+# CREATE TABLES AND SAMPLE DATA
+# ---------------------------------------------------------
+
 def create_database():
     conn = get_connection()
     cursor = conn.cursor()
 
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS students (
-            id SERIAL PRIMARY KEY,
-            rollno VARCHAR(30) UNIQUE NOT NULL,
-            name VARCHAR(100) NOT NULL,
-            branch VARCHAR(100) NOT NULL
-        )
-    """)
-
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS attendance (
-            id SERIAL PRIMARY KEY,
-            rollno VARCHAR(30) NOT NULL,
-            total_classes INTEGER NOT NULL,
-            classes_attended INTEGER NOT NULL,
-            percentage DOUBLE PRECISION NOT NULL
-        )
-    """)
-
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS marks (
-            id SERIAL PRIMARY KEY,
-            rollno VARCHAR(30) NOT NULL,
-            mid1 INTEGER NOT NULL,
-            mid2 INTEGER NOT NULL,
-            average DOUBLE PRECISION NOT NULL,
-            internal_percentage DOUBLE PRECISION NOT NULL,
-            status VARCHAR(30) NOT NULL
-        )
-    """)
-
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS aai (
-            id SERIAL PRIMARY KEY,
-            rollno VARCHAR(30) NOT NULL,
-            attendance DOUBLE PRECISION NOT NULL,
-            internal DOUBLE PRECISION NOT NULL,
-            aai_score DOUBLE PRECISION NOT NULL,
-            status VARCHAR(30) NOT NULL
-        )
-    """)
-
-    sample_students = [
-        ("23L31A4401", "Ravi Kumar", "CSE"),
-        ("23L31A4402", "Sita Devi", "CSE-DS"),
-        ("23L31A4403", "Kiran Kumar", "AI & ML"),
-        ("23L31A4404", "Anjali", "IT"),
-        ("23L31A4405", "Rahul", "ECE"),
-        ("23L31A4406", "Meena", "EEE"),
-        ("23L31A4407", "Arjun", "Mechanical"),
-        ("23L31A4408", "Divya", "Civil"),
-        ("23L31A4409", "Naveen", "CSE"),
-        ("23L31A4410", "Priya", "CSE-DS")
-    ]
-
-    sample_attendance = [
-        ("23L31A4401", 100, 95, 95.0),
-        ("23L31A4402", 100, 88, 88.0),
-        ("23L31A4403", 100, 82, 82.0),
-        ("23L31A4404", 100, 78, 78.0),
-        ("23L31A4405", 100, 72, 72.0),
-        ("23L31A4406", 100, 68, 68.0),
-        ("23L31A4407", 100, 60, 60.0),
-        ("23L31A4408", 100, 55, 55.0),
-        ("23L31A4409", 100, 48, 48.0),
-        ("23L31A4410", 100, 42, 42.0)
-    ]
-
-    sample_marks = [
-        ("23L31A4401", 24, 23, 23.5, 94.0, "Good"),
-        ("23L31A4402", 22, 21, 21.5, 86.0, "Good"),
-        ("23L31A4403", 20, 19, 19.5, 78.0, "Good"),
-        ("23L31A4404", 18, 18, 18.0, 72.0, "Good"),
-        ("23L31A4405", 17, 16, 16.5, 66.0, "Good"),
-        ("23L31A4406", 15, 14, 14.5, 58.0, "At Risk"),
-        ("23L31A4407", 13, 12, 12.5, 50.0, "At Risk"),
-        ("23L31A4408", 11, 10, 10.5, 42.0, "At Risk"),
-        ("23L31A4409", 9, 8, 8.5, 34.0, "At Risk"),
-        ("23L31A4410", 7, 6, 6.5, 26.0, "At Risk")
-    ]
-
-    sample_aai = [
-        ("23L31A4401", 95.0, 94.0, 94.65, "Excellent"),
-        ("23L31A4402", 88.0, 86.0, 87.30, "Excellent"),
-        ("23L31A4403", 82.0, 78.0, 80.60, "Good"),
-        ("23L31A4404", 78.0, 72.0, 75.90, "Good"),
-        ("23L31A4405", 72.0, 66.0, 69.90, "Average"),
-        ("23L31A4406", 68.0, 58.0, 64.50, "Average"),
-        ("23L31A4407", 60.0, 50.0, 56.50, "Average"),
-        ("23L31A4408", 55.0, 42.0, 50.45, "Average"),
-        ("23L31A4409", 48.0, 34.0, 43.10, "At Risk"),
-        ("23L31A4410", 42.0, 26.0, 36.40, "At Risk")
-    ]
-
-    cursor.executemany("""
-        INSERT INTO students (rollno, name, branch)
-        VALUES (%s, %s, %s)
-        ON CONFLICT (rollno) DO NOTHING
-    """, sample_students)
-
-    cursor.execute("SELECT COUNT(*) FROM attendance")
-
-    if cursor.fetchone()[0] == 0:
-        cursor.executemany("""
-            INSERT INTO attendance (
-                rollno,
-                total_classes,
-                classes_attended,
-                percentage
+    try:
+        # Students table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS students (
+                id SERIAL PRIMARY KEY,
+                rollno VARCHAR(30),
+                name VARCHAR(100),
+                branch VARCHAR(100)
             )
-            VALUES (%s, %s, %s, %s)
-        """, sample_attendance)
+        """)
 
-    cursor.execute("SELECT COUNT(*) FROM marks")
+        # Remove duplicate student roll numbers before adding unique index
+        cursor.execute("""
+            DELETE FROM students first_record
+            USING students duplicate_record
+            WHERE first_record.id > duplicate_record.id
+              AND first_record.rollno = duplicate_record.rollno
+        """)
 
-    if cursor.fetchone()[0] == 0:
-        cursor.executemany("""
-            INSERT INTO marks (
-                rollno,
-                mid1,
-                mid2,
-                average,
-                internal_percentage,
-                status
+        cursor.execute("""
+            CREATE UNIQUE INDEX IF NOT EXISTS unique_students_rollno
+            ON students (rollno)
+        """)
+
+        # Attendance table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS attendance (
+                id SERIAL PRIMARY KEY,
+                rollno VARCHAR(30),
+                total_classes INTEGER,
+                classes_attended INTEGER,
+                percentage DOUBLE PRECISION
             )
-            VALUES (%s, %s, %s, %s, %s, %s)
-        """, sample_marks)
+        """)
 
-    cursor.execute("SELECT COUNT(*) FROM aai")
-
-    if cursor.fetchone()[0] == 0:
-        cursor.executemany("""
-            INSERT INTO aai (
-                rollno,
-                attendance,
-                internal,
-                aai_score,
-                status
+        # Marks table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS marks (
+                id SERIAL PRIMARY KEY,
+                rollno VARCHAR(30),
+                mid1 INTEGER,
+                mid2 INTEGER,
+                average DOUBLE PRECISION,
+                internal_percentage DOUBLE PRECISION,
+                status VARCHAR(30)
             )
-            VALUES (%s, %s, %s, %s, %s)
-        """, sample_aai)
+        """)
 
-    conn.commit()
-    cursor.close()
-    conn.close()
+        # Add missing marks columns safely for old database
+        cursor.execute("""
+            ALTER TABLE marks
+            ADD COLUMN IF NOT EXISTS internal_percentage DOUBLE PRECISION
+        """)
 
+        cursor.execute("""
+            ALTER TABLE marks
+            ADD COLUMN IF NOT EXISTS status VARCHAR(30)
+        """)
+
+        # AAI table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS aai (
+                id SERIAL PRIMARY KEY,
+                rollno VARCHAR(30),
+                attendance DOUBLE PRECISION,
+                internal DOUBLE PRECISION,
+                aai_score DOUBLE PRECISION,
+                status VARCHAR(30)
+            )
+        """)
+
+        # -------------------------------------------------
+        # SAMPLE DATASET
+        # -------------------------------------------------
+
+        sample_students = [
+            ("23L31A4401", "Ravi Kumar", "CSE"),
+            ("23L31A4402", "Sita Devi", "CSE-DS"),
+            ("23L31A4403", "Kiran Kumar", "AI & ML"),
+            ("23L31A4404", "Anjali", "IT"),
+            ("23L31A4405", "Rahul", "ECE"),
+            ("23L31A4406", "Meena", "EEE"),
+            ("23L31A4407", "Arjun", "Mechanical"),
+            ("23L31A4408", "Divya", "Civil"),
+            ("23L31A4409", "Naveen", "CSE"),
+            ("23L31A4410", "Priya", "CSE-DS")
+        ]
+
+        sample_attendance = [
+            ("23L31A4401", 100, 95, 95.0),
+            ("23L31A4402", 100, 88, 88.0),
+            ("23L31A4403", 100, 82, 82.0),
+            ("23L31A4404", 100, 78, 78.0),
+            ("23L31A4405", 100, 72, 72.0),
+            ("23L31A4406", 100, 68, 68.0),
+            ("23L31A4407", 100, 60, 60.0),
+            ("23L31A4408", 100, 55, 55.0),
+            ("23L31A4409", 100, 48, 48.0),
+            ("23L31A4410", 100, 42, 42.0)
+        ]
+
+        sample_marks = [
+            ("23L31A4401", 24, 23, 23.5, 94.0, "Excellent"),
+            ("23L31A4402", 22, 21, 21.5, 86.0, "Excellent"),
+            ("23L31A4403", 20, 19, 19.5, 78.0, "Good"),
+            ("23L31A4404", 18, 18, 18.0, 72.0, "Good"),
+            ("23L31A4405", 17, 16, 16.5, 66.0, "Average"),
+            ("23L31A4406", 15, 14, 14.5, 58.0, "Average"),
+            ("23L31A4407", 13, 12, 12.5, 50.0, "Average"),
+            ("23L31A4408", 11, 10, 10.5, 42.0, "At Risk"),
+            ("23L31A4409", 9, 8, 8.5, 34.0, "At Risk"),
+            ("23L31A4410", 7, 6, 6.5, 26.0, "At Risk")
+        ]
+
+        sample_aai = [
+            ("23L31A4401", 95.0, 94.0, 94.65, "Excellent"),
+            ("23L31A4402", 88.0, 86.0, 87.30, "Excellent"),
+            ("23L31A4403", 82.0, 78.0, 80.60, "Good"),
+            ("23L31A4404", 78.0, 72.0, 75.90, "Good"),
+            ("23L31A4405", 72.0, 66.0, 69.90, "Average"),
+            ("23L31A4406", 68.0, 58.0, 64.50, "Average"),
+            ("23L31A4407", 60.0, 50.0, 56.50, "Average"),
+            ("23L31A4408", 55.0, 42.0, 50.45, "Average"),
+            ("23L31A4409", 48.0, 34.0, 43.10, "At Risk"),
+            ("23L31A4410", 42.0, 26.0, 36.40, "At Risk")
+        ]
+
+        # Insert sample students
+        cursor.executemany("""
+            INSERT INTO students (rollno, name, branch)
+            VALUES (%s, %s, %s)
+            ON CONFLICT (rollno) DO NOTHING
+        """, sample_students)
+
+        # Insert each sample attendance only if that roll number has no record
+        for record in sample_attendance:
+            cursor.execute("""
+                INSERT INTO attendance (
+                    rollno,
+                    total_classes,
+                    classes_attended,
+                    percentage
+                )
+                SELECT %s, %s, %s, %s
+                WHERE NOT EXISTS (
+                    SELECT 1
+                    FROM attendance
+                    WHERE rollno = %s
+                )
+            """, (
+                record[0],
+                record[1],
+                record[2],
+                record[3],
+                record[0]
+            ))
+
+        # Insert each sample marks record only if missing
+        for record in sample_marks:
+            cursor.execute("""
+                INSERT INTO marks (
+                    rollno,
+                    mid1,
+                    mid2,
+                    average,
+                    internal_percentage,
+                    status
+                )
+                SELECT %s, %s, %s, %s, %s, %s
+                WHERE NOT EXISTS (
+                    SELECT 1
+                    FROM marks
+                    WHERE rollno = %s
+                )
+            """, (
+                record[0],
+                record[1],
+                record[2],
+                record[3],
+                record[4],
+                record[5],
+                record[0]
+            ))
+
+        # Insert each sample AAI record only if missing
+        for record in sample_aai:
+            cursor.execute("""
+                INSERT INTO aai (
+                    rollno,
+                    attendance,
+                    internal,
+                    aai_score,
+                    status
+                )
+                SELECT %s, %s, %s, %s, %s
+                WHERE NOT EXISTS (
+                    SELECT 1
+                    FROM aai
+                    WHERE rollno = %s
+                )
+            """, (
+                record[0],
+                record[1],
+                record[2],
+                record[3],
+                record[4],
+                record[0]
+            ))
+
+        # Calculate missing internal percentages in older records
+        cursor.execute("""
+            UPDATE marks
+            SET internal_percentage = (average / 25.0) * 100
+            WHERE internal_percentage IS NULL
+              AND average IS NOT NULL
+        """)
+
+        conn.commit()
+
+    except Exception:
+        conn.rollback()
+        raise
+
+    finally:
+        cursor.close()
+        conn.close()
+
+
+# ---------------------------------------------------------
+# LOGIN PAGE
+# ---------------------------------------------------------
 
 @app.route("/")
 def index():
     return render_template("index.html")
 
 
+# ---------------------------------------------------------
+# DASHBOARD
+# ---------------------------------------------------------
+
 @app.route("/dashboard")
 def dashboard():
     conn = get_connection()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT COUNT(*) FROM students")
-    total_students = cursor.fetchone()[0]
+    try:
+        cursor.execute("SELECT COUNT(*) FROM students")
+        total_students = cursor.fetchone()[0]
 
-    cursor.execute("SELECT COUNT(DISTINCT rollno) FROM attendance")
-    present_today = cursor.fetchone()[0]
+        cursor.execute("""
+            SELECT COUNT(DISTINCT rollno)
+            FROM attendance
+        """)
+        present_today = cursor.fetchone()[0]
 
-    cursor.execute("SELECT AVG(aai_score) FROM aai")
-    result = cursor.fetchone()[0]
-    avg_aai = round(float(result), 2) if result is not None else 0
+        cursor.execute("""
+            SELECT AVG(latest_aai.aai_score)
+            FROM (
+                SELECT DISTINCT ON (rollno)
+                    rollno,
+                    aai_score
+                FROM aai
+                ORDER BY rollno, id DESC
+            ) AS latest_aai
+        """)
 
-    cursor.execute("SELECT COUNT(*) FROM aai WHERE status = %s", ("At Risk",))
-    at_risk = cursor.fetchone()[0]
+        average_result = cursor.fetchone()[0]
 
-    cursor.close()
-    conn.close()
+        avg_aai = (
+            round(float(average_result), 2)
+            if average_result is not None
+            else 0
+        )
 
-    return render_template(
-        "dashboard.html",
-        total_students=total_students,
-        present_today=present_today,
-        avg_aai=avg_aai,
-        at_risk=at_risk
-    )
+        cursor.execute("""
+            SELECT COUNT(*)
+            FROM (
+                SELECT DISTINCT ON (rollno)
+                    rollno,
+                    status
+                FROM aai
+                ORDER BY rollno, id DESC
+            ) AS latest_status
+            WHERE status = %s
+        """, ("At Risk",))
 
+        at_risk = cursor.fetchone()[0]
+
+        return render_template(
+            "dashboard.html",
+            total_students=total_students,
+            present_today=present_today,
+            avg_aai=avg_aai,
+            at_risk=at_risk
+        )
+
+    finally:
+        cursor.close()
+        conn.close()
+
+
+# ---------------------------------------------------------
+# STUDENTS
+# ---------------------------------------------------------
 
 @app.route("/students")
 def students():
     conn = get_connection()
     cursor = conn.cursor()
 
-    cursor.execute("""
-        SELECT rollno, name, branch
-        FROM students
-        ORDER BY rollno
-    """)
+    try:
+        cursor.execute("""
+            SELECT rollno, name, branch
+            FROM students
+            ORDER BY rollno
+        """)
 
-    students_data = cursor.fetchall()
+        students_data = cursor.fetchall()
 
-    cursor.close()
-    conn.close()
+        return render_template(
+            "students.html",
+            students=students_data
+        )
 
-    return render_template("students.html", students=students_data)
+    finally:
+        cursor.close()
+        conn.close()
 
 
 @app.route("/add_student", methods=["POST"])
 def add_student():
-    rollno = request.form["rollno"].strip()
+    rollno = request.form["rollno"].strip().upper()
     name = request.form["name"].strip()
     branch = request.form["branch"].strip()
 
     conn = get_connection()
     cursor = conn.cursor()
 
-    cursor.execute("""
-        INSERT INTO students (rollno, name, branch)
-        VALUES (%s, %s, %s)
-        ON CONFLICT (rollno) DO NOTHING
-    """, (rollno, name, branch))
+    try:
+        cursor.execute("""
+            INSERT INTO students (rollno, name, branch)
+            VALUES (%s, %s, %s)
+            ON CONFLICT (rollno)
+            DO UPDATE SET
+                name = EXCLUDED.name,
+                branch = EXCLUDED.branch
+        """, (rollno, name, branch))
 
-    conn.commit()
-    cursor.close()
-    conn.close()
+        conn.commit()
+
+    except Exception:
+        conn.rollback()
+        raise
+
+    finally:
+        cursor.close()
+        conn.close()
 
     return redirect("/students")
 
@@ -261,34 +421,44 @@ def edit_student(rollno):
     conn = get_connection()
     cursor = conn.cursor()
 
-    if request.method == "POST":
-        name = request.form["name"].strip()
-        branch = request.form["branch"].strip()
+    try:
+        if request.method == "POST":
+            name = request.form["name"].strip()
+            branch = request.form["branch"].strip()
+
+            cursor.execute("""
+                UPDATE students
+                SET name = %s,
+                    branch = %s
+                WHERE rollno = %s
+            """, (name, branch, rollno))
+
+            conn.commit()
+            return redirect("/students")
 
         cursor.execute("""
-            UPDATE students
-            SET name = %s, branch = %s
+            SELECT rollno, name, branch
+            FROM students
             WHERE rollno = %s
-        """, (name, branch, rollno))
+        """, (rollno,))
 
-        conn.commit()
+        student = cursor.fetchone()
+
+        if student is None:
+            return "Student not found", 404
+
+        return render_template(
+            "edit_student.html",
+            student=student
+        )
+
+    except Exception:
+        conn.rollback()
+        raise
+
+    finally:
         cursor.close()
         conn.close()
-
-        return redirect("/students")
-
-    cursor.execute("""
-        SELECT rollno, name, branch
-        FROM students
-        WHERE rollno = %s
-    """, (rollno,))
-
-    student = cursor.fetchone()
-
-    cursor.close()
-    conn.close()
-
-    return render_template("edit_student.html", student=student)
 
 
 @app.route("/delete_student/<rollno>")
@@ -296,208 +466,294 @@ def delete_student(rollno):
     conn = get_connection()
     cursor = conn.cursor()
 
-    cursor.execute("DELETE FROM students WHERE rollno = %s", (rollno,))
+    try:
+        cursor.execute("""
+            DELETE FROM students
+            WHERE rollno = %s
+        """, (rollno,))
 
-    conn.commit()
-    cursor.close()
-    conn.close()
+        conn.commit()
+
+    except Exception:
+        conn.rollback()
+        raise
+
+    finally:
+        cursor.close()
+        conn.close()
 
     return redirect("/students")
 
+
+# ---------------------------------------------------------
+# ATTENDANCE
+# ---------------------------------------------------------
 
 @app.route("/attendance")
 def attendance():
     conn = get_connection()
     cursor = conn.cursor()
 
-    cursor.execute("""
-        SELECT rollno, total_classes, classes_attended, percentage
-        FROM attendance
-        ORDER BY id DESC
-    """)
+    try:
+        cursor.execute("""
+            SELECT
+                rollno,
+                total_classes,
+                classes_attended,
+                percentage
+            FROM attendance
+            ORDER BY rollno, id DESC
+        """)
 
-    attendance_data = cursor.fetchall()
+        attendance_data = cursor.fetchall()
 
-    cursor.close()
-    conn.close()
+        return render_template(
+            "attendance.html",
+            attendance_records=attendance_data
+        )
 
-    return render_template(
-        "attendance.html",
-        attendance_records=attendance_data
-    )
+    finally:
+        cursor.close()
+        conn.close()
 
 
 @app.route("/save_attendance", methods=["POST"])
 def save_attendance():
-    rollno = request.form["rollno"].strip()
+    rollno = request.form["rollno"].strip().upper()
     total_classes = int(request.form["total_classes"])
     classes_attended = int(request.form["classes_attended"])
 
     if total_classes <= 0:
         return "Total classes must be greater than zero", 400
 
-    if classes_attended < 0 or classes_attended > total_classes:
-        return "Classes attended must be between 0 and total classes", 400
+    if classes_attended < 0:
+        return "Classes attended cannot be negative", 400
 
-    percentage = (classes_attended / total_classes) * 100
+    if classes_attended > total_classes:
+        return "Classes attended cannot exceed total classes", 400
 
     conn = get_connection()
     cursor = conn.cursor()
 
-    cursor.execute("""
-        INSERT INTO attendance (
+    try:
+        cursor.execute("""
+            SELECT 1
+            FROM students
+            WHERE rollno = %s
+        """, (rollno,))
+
+        if cursor.fetchone() is None:
+            return "Student Roll Number not found", 404
+
+        percentage = (
+            classes_attended / total_classes
+        ) * 100
+
+        cursor.execute("""
+            INSERT INTO attendance (
+                rollno,
+                total_classes,
+                classes_attended,
+                percentage
+            )
+            VALUES (%s, %s, %s, %s)
+        """, (
             rollno,
             total_classes,
             classes_attended,
             percentage
-        )
-        VALUES (%s, %s, %s, %s)
-    """, (
-        rollno,
-        total_classes,
-        classes_attended,
-        percentage
-    ))
+        ))
 
-    conn.commit()
-    cursor.close()
-    conn.close()
+        conn.commit()
+
+    except Exception:
+        conn.rollback()
+        raise
+
+    finally:
+        cursor.close()
+        conn.close()
 
     return redirect("/attendance")
 
+
+# ---------------------------------------------------------
+# INTERNAL MARKS
+# ---------------------------------------------------------
 
 @app.route("/marks")
 def marks():
     conn = get_connection()
     cursor = conn.cursor()
 
-    cursor.execute("""
-        SELECT
-            rollno,
-            mid1,
-            mid2,
-            average,
-            internal_percentage,
-            status
-        FROM marks
-        ORDER BY id DESC
-    """)
+    try:
+        cursor.execute("""
+    SELECT
+        marks.rollno,
+        marks.mid1,
+        marks.mid2,
+        CAST(marks.average AS DOUBLE PRECISION),
+        CAST(marks.internal_percentage AS DOUBLE PRECISION),
+        marks.status
+    FROM marks
+    ORDER BY marks.rollno, marks.id DESC
+""")
+        marks_data = cursor.fetchall()
 
-    marks_data = cursor.fetchall()
+        return render_template(
+            "marks.html",
+            marks_records=marks_data
+        )
 
-    cursor.close()
-    conn.close()
-
-    return render_template(
-        "marks.html",
-        marks_records=marks_data
-    )
+    finally:
+        cursor.close()
+        conn.close()
 
 
 @app.route("/save_marks", methods=["POST"])
 def save_marks():
-    rollno = request.form["rollno"].strip()
+    rollno = request.form["rollno"].strip().upper()
     mid1 = int(request.form["mid1"])
     mid2 = int(request.form["mid2"])
 
-    if not 0 <= mid1 <= 25 or not 0 <= mid2 <= 25:
-        return "Mid marks must be between 0 and 25", 400
+    if not 0 <= mid1 <= 25:
+        return "Mid-1 marks must be between 0 and 25", 400
 
-    average = (mid1 + mid2) / 2
-    internal_percentage = (average / 25) * 100
-
-    status = "Good" if internal_percentage >= 60 else "At Risk"
+    if not 0 <= mid2 <= 25:
+        return "Mid-2 marks must be between 0 and 25", 400
 
     conn = get_connection()
     cursor = conn.cursor()
 
-    cursor.execute("""
-        INSERT INTO marks (
+    try:
+        cursor.execute("""
+            SELECT 1
+            FROM students
+            WHERE rollno = %s
+        """, (rollno,))
+
+        if cursor.fetchone() is None:
+            return "Student Roll Number not found", 404
+
+        average = (mid1 + mid2) / 2
+        internal_percentage = (average / 25) * 100
+        status = get_internal_status(internal_percentage)
+
+        cursor.execute("""
+            INSERT INTO marks (
+                rollno,
+                mid1,
+                mid2,
+                average,
+                internal_percentage,
+                status
+            )
+            VALUES (%s, %s, %s, %s, %s, %s)
+        """, (
             rollno,
             mid1,
             mid2,
             average,
             internal_percentage,
             status
-        )
-        VALUES (%s, %s, %s, %s, %s, %s)
-    """, (
-        rollno,
-        mid1,
-        mid2,
-        average,
-        internal_percentage,
-        status
-    ))
+        ))
 
-    conn.commit()
-    cursor.close()
-    conn.close()
+        conn.commit()
+
+    except Exception:
+        conn.rollback()
+        raise
+
+    finally:
+        cursor.close()
+        conn.close()
 
     return redirect("/marks")
 
+
+# ---------------------------------------------------------
+# AAI
+# ---------------------------------------------------------
 
 @app.route("/aai")
 def aai():
     conn = get_connection()
     cursor = conn.cursor()
 
-    cursor.execute("""
-        SELECT
-            id,
-            rollno,
-            attendance,
-            internal,
-            aai_score,
-            status
-        FROM aai
-        ORDER BY id DESC
-    """)
+    try:
+        cursor.execute("""
+            SELECT
+                id,
+                rollno,
+                attendance,
+                internal,
+                aai_score,
+                status
+            FROM aai
+            ORDER BY id DESC
+        """)
 
-    aai_data = cursor.fetchall()
+        aai_data = cursor.fetchall()
 
-    cursor.close()
-    conn.close()
+        return render_template(
+            "aai.html",
+            aai_records=aai_data
+        )
 
-    return render_template("aai.html", aai_records=aai_data)
+    finally:
+        cursor.close()
+        conn.close()
 
 
 @app.route("/save_aai", methods=["POST"])
 def save_aai():
-    rollno = request.form["rollno"].strip()
+    rollno = request.form["rollno"].strip().upper()
     attendance_value = float(request.form["attendance"])
     internal_value = float(request.form["internal"])
+
+    if not 0 <= attendance_value <= 100:
+        return "Attendance percentage must be between 0 and 100", 400
+
+    if not 0 <= internal_value <= 100:
+        return "Internal percentage must be between 0 and 100", 400
 
     aai_score = (
         attendance_value * 0.65
         + internal_value * 0.35
     )
 
-    status = calculate_aai_status(aai_score)
+    status = get_aai_status(aai_score)
 
     conn = get_connection()
     cursor = conn.cursor()
 
-    cursor.execute("""
-        INSERT INTO aai (
+    try:
+        cursor.execute("""
+            INSERT INTO aai (
+                rollno,
+                attendance,
+                internal,
+                aai_score,
+                status
+            )
+            VALUES (%s, %s, %s, %s, %s)
+        """, (
             rollno,
-            attendance,
-            internal,
+            attendance_value,
+            internal_value,
             aai_score,
             status
-        )
-        VALUES (%s, %s, %s, %s, %s)
-    """, (
-        rollno,
-        attendance_value,
-        internal_value,
-        aai_score,
-        status
-    ))
+        ))
 
-    conn.commit()
-    cursor.close()
-    conn.close()
+        conn.commit()
+
+    except Exception:
+        conn.rollback()
+        raise
+
+    finally:
+        cursor.close()
+        conn.close()
 
     return redirect("/aai")
 
@@ -507,105 +763,178 @@ def delete_aai(record_id):
     conn = get_connection()
     cursor = conn.cursor()
 
-    cursor.execute(
-        "DELETE FROM aai WHERE id = %s",
-        (record_id,)
-    )
+    try:
+        cursor.execute("""
+            DELETE FROM aai
+            WHERE id = %s
+        """, (record_id,))
 
-    conn.commit()
-    cursor.close()
-    conn.close()
+        conn.commit()
+
+    except Exception:
+        conn.rollback()
+        raise
+
+    finally:
+        cursor.close()
+        conn.close()
 
     return redirect("/aai")
 
 
+# ---------------------------------------------------------
+# SMART STUDENT LOOKUP
+# ---------------------------------------------------------
+
 @app.route("/get_student_data/<rollno>")
 def get_student_data(rollno):
+    rollno = rollno.strip().upper()
+
     conn = get_connection()
     cursor = conn.cursor()
 
-    cursor.execute("""
-        SELECT name, branch
-        FROM students
-        WHERE rollno = %s
-    """, (rollno,))
+    try:
+        cursor.execute("""
+            SELECT name, branch
+            FROM students
+            WHERE rollno = %s
+        """, (rollno,))
 
-    student = cursor.fetchone()
+        student = cursor.fetchone()
 
-    if student is None:
+        if student is None:
+            return jsonify({
+                "success": False,
+                "message": "Student not found"
+            })
+
+        cursor.execute("""
+            SELECT
+                total_classes,
+                classes_attended,
+                percentage
+            FROM attendance
+            WHERE rollno = %s
+            ORDER BY id DESC
+            LIMIT 1
+        """, (rollno,))
+
+        attendance_record = cursor.fetchone()
+
+        cursor.execute("""
+            SELECT
+                mid1,
+                mid2,
+                average,
+                internal_percentage,
+                status
+            FROM marks
+            WHERE rollno = %s
+            ORDER BY id DESC
+            LIMIT 1
+        """, (rollno,))
+
+        marks_record = cursor.fetchone()
+
+        cursor.execute("""
+            SELECT
+                aai_score,
+                status
+            FROM aai
+            WHERE rollno = %s
+            ORDER BY id DESC
+            LIMIT 1
+        """, (rollno,))
+
+        aai_record = cursor.fetchone()
+
+        attendance_percentage = (
+            round(float(attendance_record[2]), 2)
+            if attendance_record
+            else 0
+        )
+
+        internal_percentage = (
+            round(float(marks_record[3]), 2)
+            if marks_record and marks_record[3] is not None
+            else 0
+        )
+
+        calculated_aai = (
+            attendance_percentage * 0.65
+            + internal_percentage * 0.35
+        )
+
+        calculated_status = get_aai_status(calculated_aai)
+
+        return jsonify({
+            "success": True,
+
+            "rollno": rollno,
+            "name": student[0],
+            "branch": student[1],
+
+            "total_classes": (
+                attendance_record[0]
+                if attendance_record
+                else 0
+            ),
+
+            "classes_attended": (
+                attendance_record[1]
+                if attendance_record
+                else 0
+            ),
+
+            "attendance": attendance_percentage,
+
+            "mid1": (
+                marks_record[0]
+                if marks_record
+                else 0
+            ),
+
+            "mid2": (
+                marks_record[1]
+                if marks_record
+                else 0
+            ),
+
+            "average": (
+                round(float(marks_record[2]), 2)
+                if marks_record
+                else 0
+            ),
+
+            "internal_percentage": internal_percentage,
+
+            "marks_status": (
+                marks_record[4]
+                if marks_record
+                else "No Data"
+            ),
+
+            "aai_score": (
+                round(float(aai_record[0]), 2)
+                if aai_record
+                else round(calculated_aai, 2)
+            ),
+
+            "aai_status": (
+                aai_record[1]
+                if aai_record
+                else calculated_status
+            )
+        })
+
+    finally:
         cursor.close()
         conn.close()
 
-        return jsonify({
-            "success": False,
-            "message": "Student not found"
-        })
 
-    cursor.execute("""
-        SELECT percentage
-        FROM attendance
-        WHERE rollno = %s
-        ORDER BY id DESC
-        LIMIT 1
-    """, (rollno,))
-
-    attendance_record = cursor.fetchone()
-
-    cursor.execute("""
-        SELECT
-            mid1,
-            mid2,
-            average,
-            internal_percentage,
-            status
-        FROM marks
-        WHERE rollno = %s
-        ORDER BY id DESC
-        LIMIT 1
-    """, (rollno,))
-
-    marks_record = cursor.fetchone()
-
-    cursor.execute("""
-        SELECT aai_score, status
-        FROM aai
-        WHERE rollno = %s
-        ORDER BY id DESC
-        LIMIT 1
-    """, (rollno,))
-
-    aai_record = cursor.fetchone()
-
-    cursor.close()
-    conn.close()
-
-    return jsonify({
-        "success": True,
-        "rollno": rollno,
-        "name": student[0],
-        "branch": student[1],
-        "attendance": (
-            round(float(attendance_record[0]), 2)
-            if attendance_record else 0
-        ),
-        "mid1": marks_record[0] if marks_record else 0,
-        "mid2": marks_record[1] if marks_record else 0,
-        "average": (
-            round(float(marks_record[2]), 2)
-            if marks_record else 0
-        ),
-        "internal_percentage": (
-            round(float(marks_record[3]), 2)
-            if marks_record else 0
-        ),
-        "marks_status": marks_record[4] if marks_record else "No Data",
-        "aai_score": (
-            round(float(aai_record[0]), 2)
-            if aai_record else 0
-        ),
-        "aai_status": aai_record[1] if aai_record else "No Data"
-    })
-
+# ---------------------------------------------------------
+# START APPLICATION
+# ---------------------------------------------------------
 
 create_database()
 

@@ -1,7 +1,10 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Internal Marks</title>
+
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 
@@ -9,86 +12,186 @@
 
 <div class="sidebar">
     <h2>EduTrack</h2>
-    <a href="/dashboard">Dashboard</a>
-    <a href="/students">Students</a>
-    <a href="/attendance">Attendance</a>
-    <a href="/marks">Internal Marks</a>
-    <a href="/aai">AAI Calculator</a>
+
+    <a href="/dashboard">🏠 Dashboard</a>
+    <a href="/students">👨‍🎓 Students</a>
+    <a href="/attendance">📅 Attendance</a>
+    <a href="/marks">📖 Internal Marks</a>
+    <a href="/aai">📊 AAI Calculator</a>
 </div>
 
 <div class="main">
 
-    <h1>Internal Marks</h1>
-    <p class="subtitle">Manage student internal marks</p>
+    <h1>Internal Marks Management</h1>
+
+    <p class="subtitle">
+        Enter internal marks and calculate percentage automatically
+    </p>
 
     <div class="panel">
 
         <form action="/save_marks" method="POST">
 
-            <input type="text"
-                   name="rollno"
-                   placeholder="Roll Number"
-                   required>
+            <input
+                type="text"
+                id="rollno"
+                name="rollno"
+                placeholder="Roll Number"
+                required
+                onblur="fetchStudentDetails()"
+            >
 
-            <input type="number"
-                   name="mid1"
-                   placeholder="Mid 1 Marks"
-                   required>
+            <input
+                type="text"
+                id="studentName"
+                placeholder="Student Name"
+                readonly
+            >
 
-            <input type="number"
-                   name="mid2"
-                   placeholder="Mid 2 Marks"
-                   required>
+            <input
+                type="text"
+                id="studentBranch"
+                placeholder="Branch"
+                readonly
+            >
+
+            <input
+                type="number"
+                id="mid1"
+                name="mid1"
+                placeholder="Mid-1 Marks"
+                min="0"
+                max="25"
+                required
+                onkeyup="calculateMarks()"
+            >
+
+            <input
+                type="number"
+                id="mid2"
+                name="mid2"
+                placeholder="Mid-2 Marks"
+                min="0"
+                max="25"
+                required
+                onkeyup="calculateMarks()"
+            >
+
+            <div class="result-box">
+
+                <p>
+                    Average :
+                    <span id="average">0</span>
+                </p>
+
+                <p>
+                    Internal Percentage :
+                    <span id="percentage">0</span>%
+                </p>
+
+            </div>
 
             <button type="submit">
-                Save Marks
+                Save Internal Marks
             </button>
 
         </form>
 
-        <br>
+    </div>
+
+    <div class="panel" style="margin-top:25px;">
+
+        <h2>Saved Internal Marks</h2>
 
         <table>
 
+            <thead>
+
             <tr>
                 <th>Roll No</th>
-                <th>Mid 1</th>
-                <th>Mid 2</th>
+                <th>Name</th>
+                <th>Branch</th>
+                <th>Mid-1</th>
+                <th>Mid-2</th>
                 <th>Average</th>
                 <th>Internal %</th>
                 <th>Status</th>
-                <th>Actions</th>
             </tr>
 
-            {% for record in marks_records %}
+            </thead>
 
-            <tr>
+            <tbody>
 
-                <td>{{ record[1] }}</td>
-                <td>{{ record[2] }}</td>
-                <td>{{ record[3] }}</td>
-                <td>{{ record[4] }}</td>
-                <td>{{ "%.1f"|format(record[5]) }}%</td>
-                <td>{{ record[6] }}</td>
+                {% for record in marks_records %}
 
-                <td>
+               <tr>
 
-                    <a href="/delete_marks/{{ record[0] }}"
-                       onclick="return confirm('Delete this record?')">
-                       Delete
-                    </a>
+                   <td>{{ record[0] }}</td>
 
-                </td>
+                   <td>{{ record[1] }}</td>
 
-            </tr>
+                   <td>{{ record[2] }}</td>
 
-            {% endfor %}
+                   <td>{{ record[3] }}</td>
+
+                   <td>{{ record[4] }}</td>
+
+                   <td>{{ record[3]|float|round(2) }}</td>
+
+                   <td>{{ record[4]|float|round(2) }}%</td>
+
+                   <td>{{ record[7] }}</td>
+
+                </tr>
+
+                {% endfor %}
+            </tbody>
 
         </table>
 
     </div>
 
 </div>
+
+<script>
+
+async function fetchStudentDetails(){
+
+const roll=document.getElementById("rollno").value;
+
+if(!roll) return;
+
+const response=await fetch("/get_student_data/"+roll);
+
+const data=await response.json();
+
+if(data.success){
+
+document.getElementById("studentName").value=data.name;
+
+document.getElementById("studentBranch").value=data.branch;
+
+}
+
+}
+
+function calculateMarks(){
+
+let m1=parseFloat(document.getElementById("mid1").value)||0;
+
+let m2=parseFloat(document.getElementById("mid2").value)||0;
+
+let avg=(m1+m2)/2;
+
+let percentage=(avg/25)*100;
+
+document.getElementById("average").innerHTML=avg.toFixed(2);
+
+document.getElementById("percentage").innerHTML=percentage.toFixed(2);
+
+}
+
+</script>
 
 </body>
 </html>

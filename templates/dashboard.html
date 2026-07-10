@@ -1,82 +1,149 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Smart Attendance Dashboard</title>
-    <link rel="stylesheet" href="/static/style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EduTrack Dashboard</title>
+
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 </head>
+
 <body>
 
 <div class="sidebar">
+
     <h2>EduTrack</h2>
-    <a href="/dashboard">Dashboard</a>
-    <a href="/students">Students</a>
-    <a href="/attendance">Attendance</a>
-    <a href="/marks">Internal Marks</a>
-    <a href="/aai">AAI Calculator</a>
+
+    <a href="/dashboard">🏠 Dashboard</a>
+
+    <a href="/students">👨‍🎓 Students</a>
+
+    <a href="/attendance">📅 Attendance</a>
+
+    <a href="/marks">📖 Internal Marks</a>
+
+    <a href="/aai">📊 AAI Calculator</a>
+
 </div>
 
+
 <div class="main">
-    <h1>Smart Attendance Dashboard</h1>
-    <p class="subtitle">Academic Attendance & Internal Performance Monitoring System</p>
+
+<h1>Smart Attendance Dashboard</h1>
+
+<p class="subtitle">
+Academic Attendance & Internal Performance Monitoring System
+</p>
+
 
 <div class="cards">
 
-    <div class="card">
-    <h3>Total Students</h3>
-    <p>{{ total_students }}</p>
+<div class="card">
+<h3>Total Students</h3>
+<p>{{ total_students }}</p>
 </div>
 
 <div class="card">
-    <h3>Present Today</h3>
-    <p>{{ present_today }}</p>
+<h3>Present Today</h3>
+<p>{{ present_today }}</p>
 </div>
 
 <div class="card">
-    <h3>Average AAI</h3>
-    <p>{{ avg_aai }}</p>
+<h3>Average AAI</h3>
+<p>{{ avg_aai }}</p>
 </div>
 
 <div class="card">
-    <h3>At Risk Students</h3>
-    <p>{{ at_risk }}</p>
-</div>
-</div>
-    </div>
-    <div class="panel">
-    <h2>Attendance Trend</h2>
-
-    <canvas id="attendanceChart"></canvas>
-
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-    <script>
-        const ctx = document.getElementById('attendanceChart');
-
-        new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May'],
-                datasets: [{
-                    label: 'Attendance %',
-                    data: [82, 85, 88, 90, 87],
-                    borderColor: '#4f46e5',
-                    backgroundColor: 'rgba(79,70,229,0.2)',
-                    fill: true,
-                    tension: 0.4
-                }]
-            }
-        });
-    </script>
+<h3>At Risk Students</h3>
+<p>{{ at_risk }}</p>
 </div>
 
-    <div class="panel" style="margin-top:25px;">
-        <h2>Project Overview</h2>
-        <p>
-            EduTrack helps teachers monitor student attendance, internal marks,
-            and Academic Attendance Index (AAI) in one place.
-        </p>
-    </div>
 </div>
+
+
+<div class="panel">
+
+<h2>Attendance Trend</h2>
+
+<canvas id="attendanceChart"></canvas>
+
+</div>
+
+
+<div class="panel">
+
+<h2>Project Overview</h2>
+
+<p>
+
+EduTrack is a Smart Attendance and Internal Performance Monitoring System.
+
+It stores student information in a database and automatically calculates
+
+Attendance Percentage, Internal Percentage and Academic Attendance Index (AAI).
+
+Faculty can monitor student performance using a single Roll Number.
+
+</p>
+
+</div>
+
+</div>
+
+
+
+<script>
+
+const ctx=document.getElementById('attendanceChart');
+
+new Chart(ctx,{
+
+type:'line',
+
+data:{
+
+labels:['Jan','Feb','Mar','Apr','May','Jun'],
+
+datasets:[{
+
+label:'Attendance %',
+
+data:[82,85,88,90,86,91],
+
+fill:true,
+
+borderColor:'#2563eb',
+
+backgroundColor:'rgba(37,99,235,0.2)',
+
+tension:0.4
+
+}]
+
+},
+
+options:{
+
+responsive:true,
+
+plugins:{
+
+legend:{
+
+display:true
+
+}
+
+}
+
+}
+
+});
+
+</script>
 
 </body>
 </html>

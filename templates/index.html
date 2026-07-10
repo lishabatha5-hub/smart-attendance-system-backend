@@ -1,21 +1,80 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Smart Attendance System</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>EduTrack Login</title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='style.css') }}"
+    >
 </head>
-<body>
 
-<div class="login-box">
-    <h1>Smart Attendance System</h1>
-    <p>Academic Attendance Monitoring</p>
+<body class="login-page">
 
-    <input type="text" placeholder="Username">
-    <input type="password" placeholder="Password">
+    <div class="login-container">
 
-    <button onclick="login()">Login</button>
-</div>
-<script src="{{ url_for('static', filename='script.js') }}"></script>
+        <div class="login-box">
+
+            <h1>EduTrack</h1>
+
+            <h2>Smart Attendance System</h2>
+
+            <p>
+                Academic Attendance and Internal Performance Monitoring
+            </p>
+
+            <form onsubmit="loginUser(event)">
+
+                <input
+                    type="text"
+                    id="username"
+                    placeholder="Username"
+                    required
+                >
+
+                <input
+                    type="password"
+                    id="password"
+                    placeholder="Password"
+                    required
+                >
+
+                <button type="submit">
+                    Login
+                </button>
+
+            </form>
+
+            <p id="loginMessage" class="login-message"></p>
+
+        </div>
+
+    </div>
+
+    <script>
+        function loginUser(event) {
+            event.preventDefault();
+
+            const username =
+                document.getElementById("username").value.trim();
+
+            const password =
+                document.getElementById("password").value.trim();
+
+            const message =
+                document.getElementById("loginMessage");
+
+            if (username === "admin" && password === "admin123") {
+                window.location.href = "/dashboard";
+            } else {
+                message.textContent =
+                    "Invalid username or password";
+            }
+        }
+    </script>
 
 </body>
 </html>

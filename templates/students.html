@@ -1,61 +1,165 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Students</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Students Management</title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='style.css') }}"
+    >
 </head>
+
 <body>
 
 <div class="sidebar">
     <h2>EduTrack</h2>
-    <a href="/dashboard">Dashboard</a>
-    <a href="/students">Students</a>
-    <a href="/attendance">Attendance</a>
-    <a href="/marks">Internal Marks</a>
-    <a href="/aai">AAI Calculator</a>
+
+    <a href="/dashboard">🏠 Dashboard</a>
+    <a href="/students">👨‍🎓 Students</a>
+    <a href="/attendance">📅 Attendance</a>
+    <a href="/marks">📖 Internal Marks</a>
+    <a href="/aai">📊 AAI Calculator</a>
 </div>
 
 <div class="main">
+
     <h1>Students Management</h1>
-    <p class="subtitle">Manage student records</p>
+
+    <p class="subtitle">
+        Add, view, edit and delete student records
+    </p>
 
     <div class="panel">
 
-        <form action="/add_student" method="POST" style="margin-bottom: 25px;">
-            <input type="text" name="rollno" placeholder="Roll No" required>
-            <input type="text" name="name" placeholder="Student Name" required>
-            <input type="text" name="branch" placeholder="Class / Branch" required>
-            <button type="submit">Add Student</button>
+        <h2>Add New Student</h2>
+
+        <form action="/add_student" method="POST">
+
+            <input
+                type="text"
+                name="rollno"
+                placeholder="Roll Number"
+                required
+            >
+
+            <input
+                type="text"
+                name="name"
+                placeholder="Student Name"
+                required
+            >
+
+            <input
+                type="text"
+                name="branch"
+                placeholder="Branch / Department"
+                required
+            >
+
+            <button type="submit">
+                Add Student
+            </button>
+
         </form>
 
-        <input type="text" placeholder="Search Student..." style="width:300px;padding:12px;margin-bottom:20px;">
+    </div>
 
-        <table>
-            <tr>
-                <th>Roll No</th>
-                <th>Name</th>
-                <th>Class / Branch</th>
-                <th>Actions</th>
-            </tr>
+    <div class="panel" style="margin-top: 25px;">
 
-            {% for student in students %}
-            <tr>
-                <td>{{ student[0] }}</td>
-                <td>{{ student[1] }}</td>
-                <td>{{ student[2] }}</td>
-                <td>
-                    <a href="/edit_student/{{ student[0] }}">Edit</a>
-                    <a href="/delete_student/{{ student[0] }}"
-                       onclick="return confirm('Are you sure you want to delete this student?')">
-                       Delete
-                    </a>
-                </td>
-            </tr>
-            {% endfor %}
-        </table>
+        <div class="panel-header">
+            <h2>Student Records</h2>
+
+            <input
+                type="text"
+                id="studentSearch"
+                placeholder="Search by Roll No or Name"
+                onkeyup="searchStudents()"
+            >
+        </div>
+
+        <div class="table-wrapper">
+
+            <table id="studentsTable">
+
+                <thead>
+                    <tr>
+                        <th>Roll No</th>
+                        <th>Student Name</th>
+                        <th>Branch</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+
+                    {% for student in students %}
+
+                    <tr>
+                        <td>{{ student[0] }}</td>
+                        <td>{{ student[1] }}</td>
+                        <td>{{ student[2] }}</td>
+
+                        <td>
+                            <a
+                                class="action-link edit-link"
+                                href="/edit_student/{{ student[0] }}"
+                            >
+                                Edit
+                            </a>
+
+                            <a
+                                class="action-link delete-link"
+                                href="/delete_student/{{ student[0] }}"
+                                onclick="return confirm('Delete this student?')"
+                            >
+                                Delete
+                            </a>
+                        </td>
+                    </tr>
+
+                    {% else %}
+
+                    <tr>
+                        <td colspan="4" class="empty-message">
+                            No student records available
+                        </td>
+                    </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
 
     </div>
+
 </div>
+
+<script>
+function searchStudents() {
+    const input = document
+        .getElementById("studentSearch")
+        .value
+        .toLowerCase();
+
+    const rows = document.querySelectorAll(
+        "#studentsTable tbody tr"
+    );
+
+    rows.forEach((row) => {
+        const rowText = row.textContent.toLowerCase();
+
+        row.style.display = rowText.includes(input)
+            ? ""
+            : "none";
+    });
+}
+</script>
 
 </body>
 </html>

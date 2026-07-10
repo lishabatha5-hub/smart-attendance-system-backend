@@ -1,78 +1,220 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Attendance</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Attendance Management</title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='style.css') }}"
+    >
 </head>
+
 <body>
 
 <div class="sidebar">
     <h2>EduTrack</h2>
-    <a href="/dashboard">Dashboard</a>
-    <a href="/students">Students</a>
-    <a href="/attendance">Attendance</a>
-    <a href="/marks">Internal Marks</a>
-    <a href="/aai">AAI Calculator</a>
+
+    <a href="/dashboard">🏠 Dashboard</a>
+    <a href="/students">👨‍🎓 Students</a>
+    <a href="/attendance">📅 Attendance</a>
+    <a href="/marks">📖 Internal Marks</a>
+    <a href="/aai">📊 AAI Calculator</a>
 </div>
 
 <div class="main">
-    <h1>Attendance Entry</h1>
-    <p class="subtitle">Enter class attendance details</p>
+
+    <h1>Attendance Management</h1>
+
+    <p class="subtitle">
+        Search a student and save attendance details
+    </p>
 
     <div class="panel">
-        <form action="/save_attendance" method="POST" style="margin-bottom: 25px;">
-            <input type="text" name="rollno" placeholder="Roll Number" required>
-            <input type="number" name="total_classes" placeholder="Total Classes" required>
-            <input type="number" name="classes_attended" placeholder="Classes Attended" required>
 
-            <button type="button" onclick="calculateAttendance()">Calculate Attendance</button>
-            <button type="submit">Save Attendance</button>
+        <h2>Enter Attendance</h2>
+
+        <form action="/save_attendance" method="POST">
+
+            <input
+                type="text"
+                id="rollno"
+                name="rollno"
+                placeholder="Roll Number"
+                required
+                onblur="fetchStudentDetails()"
+            >
+
+            <input
+                type="text"
+                id="studentName"
+                placeholder="Student Name"
+                readonly
+            >
+
+            <input
+                type="text"
+                id="studentBranch"
+                placeholder="Branch / Department"
+                readonly
+            >
+
+            <input
+                type="number"
+                id="totalClasses"
+                name="total_classes"
+                placeholder="Total Classes"
+                min="1"
+                required
+            >
+
+            <input
+                type="number"
+                id="classesAttended"
+                name="classes_attended"
+                placeholder="Classes Attended"
+                min="0"
+                required
+            >
+
+            <button
+                type="button"
+                onclick="calculateAttendance()"
+            >
+                Calculate Attendance
+            </button>
+
+            <button type="submit">
+                Save Attendance
+            </button>
+
         </form>
 
-        <div class="result-box">
-            Attendance Percentage: <span id="attendanceResult">0%</span>
+        <div id="attendanceResult" class="result-box">
+            Attendance Percentage: 0%
         </div>
+
+        <p id="studentMessage"></p>
+
+    </div>
+
+    <div class="panel" style="margin-top: 25px;">
 
         <h2>Saved Attendance Records</h2>
 
-        <table>
-            <tr>
-                <th>Roll No</th>
-                <th>Total Classes</th>
-                <th>Classes Attended</th>
-                <th>Percentage</th>
-                <th>Actions</th>
-            </tr>
+        <div class="table-wrapper">
 
-            {% for record in attendance_records %}
-            <tr>
-                <td>{{ record[1] }}</td>
-                <td>{{ record[2] }}</td>
-                <td>{{ record[3] }}</td>
-                <td>{{ "%.2f"|format(record[4]) }}%</td>
-                <td>
-                    <a href="/delete_attendance/{{ record[0] }}"
-                       onclick="return confirm('Delete this attendance record?')">
-                       Delete
-                    </a>
-                </td>
-            </tr>
-            {% endfor %}
-        </table>
+            <table>
+
+                <thead>
+                    <tr>
+                        <th>Roll No</th>
+                        <th>Total Classes</th>
+                        <th>Classes Attended</th>
+                        <th>Percentage</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+
+                    {% for record in attendance_records %}
+
+                    <tr>
+                        <td>{{ record[0] }}</td>
+                        <td>{{ record[1] }}</td>
+                        <td>{{ record[2] }}</td>
+                        <td>{{ "%.2f"|format(record[3]) }}%</td>
+                    </tr>
+
+                    {% else %}
+
+                    <tr>
+                        <td colspan="4" class="empty-message">
+                            No attendance records available
+                        </td>
+                    </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
     </div>
+
 </div>
 
 <script>
-function calculateAttendance() {
-    let total = document.querySelector('input[name="total_classes"]').value;
-    let attended = document.querySelector('input[name="classes_attended"]').value;
+async function fetchStudentDetails() {
+    const rollno = document
+        .getElementById("rollno")
+        .value
+        .trim();
 
-    if (total > 0 && attended >= 0) {
-        let percentage = (attended / total) * 100;
-        document.getElementById("attendanceResult").innerText = percentage.toFixed(2) + "%";
-    } else {
-        document.getElementById("attendanceResult").innerText = "0%";
+    const message = document.getElementById("studentMessage");
+
+    if (!rollno) {
+        return;
     }
+
+    try {
+        const response = await fetch(`/get_student_data/${rollno}`);
+        const data = await response.json();
+
+        if (!data.success) {
+            document.getElementById("studentName").value = "";
+            document.getElementById("studentBranch").value = "";
+
+            message.textContent = "Student not found";
+            return;
+        }
+
+        document.getElementById("studentName").value = data.name;
+        document.getElementById("studentBranch").value = data.branch;
+
+        message.textContent = "Student details loaded successfully";
+
+    } catch (error) {
+        message.textContent = "Unable to load student details";
+        console.error(error);
+    }
+}
+
+function calculateAttendance() {
+    const total = parseInt(
+        document.getElementById("totalClasses").value
+    );
+
+    const attended = parseInt(
+        document.getElementById("classesAttended").value
+    );
+
+    const resultBox =
+        document.getElementById("attendanceResult");
+
+    if (
+        isNaN(total) ||
+        isNaN(attended) ||
+        total <= 0 ||
+        attended < 0 ||
+        attended > total
+    ) {
+        resultBox.textContent =
+            "Please enter valid attendance values";
+
+        return;
+    }
+
+    const percentage = (attended / total) * 100;
+
+    resultBox.textContent =
+        "Attendance Percentage: " +
+        percentage.toFixed(2) +
+        "%";
 }
 </script>
 
